@@ -12,7 +12,7 @@ const READ_API_KEY = "XXI2FHM09C5VYWJC";
 async function obtenerDatosThingSpeak() {
     try {
         const url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?results=1&api_key=${READ_API_KEY}`;
-        
+
         const response = await fetch(url);
         const data = await response.json();
 
@@ -60,9 +60,13 @@ function actualizarDashboardReal(hum, fecha) {
     document.getElementById('badgeLive').innerHTML = badgeContent;
 
     // Hora real desde ThingSpeak
-    const tiempo = new Date(fecha);
-    document.getElementById('lastLive').innerText =
-        tiempo.toLocaleTimeString();
+    const ahora = new Date();
+    const lectura = new Date(fecha);
+
+    const diffMin = Math.floor((ahora - lectura) / 60000);
+
+    document.getElementById("lastLive").innerText =
+        diffMin === 0 ? "Ahora mismo" : `Hace ${diffMin} min`;
 }
 
 // ==============================
@@ -72,49 +76,60 @@ function actualizarDashboardReal(hum, fecha) {
 function randomHumedad() {
     return Math.floor(Math.random() * (84 - 44 + 1) + 44);
 }
+async function renderColorfulBars() {
 
-function renderColorfulBars() {
     const container = document.getElementById('colorfulBars');
     if (!container) return;
 
-    const horas = ['10:00', '12:00', '14:00', '16:00', '18:00', '20:00'];
-    const values = horas.map(() => randomHumedad());
+    try {
+        const url = `https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?results=10&api_key=${READ_API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-    container.innerHTML = '';
+        const feeds = data.feeds;
 
-    for (let i = 0; i < horas.length; i++) {
-        const altura = Math.min(150, values[i] * 1.9);
+        container.innerHTML = '';
 
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.width = '70px';
+        feeds.forEach(feed => {
+            const valor = parseInt(feed.field1);
+            if (isNaN(valor)) return;
 
-        const bar = document.createElement('div');
-        bar.className = 'bar-neon';
-        bar.style.height = `${altura}px`;
-        bar.style.width = '48px';
-        bar.style.display = 'flex';
-        bar.style.alignItems = 'flex-end';
-        bar.style.justifyContent = 'center';
-        bar.style.paddingBottom = '8px';
-        bar.style.fontSize = '0.7rem';
-        bar.style.fontWeight = 'bold';
-        bar.style.color = '#ffffff';
-        bar.style.textShadow = '0 0 2px black';
-        bar.innerText = `${values[i]}%`;
+            const hora = new Date(feed.created_at)
+                .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        const label = document.createElement('div');
-        label.style.fontSize = '0.7rem';
-        label.style.marginTop = '8px';
-        label.style.fontWeight = '500';
-        label.style.color = '#cbd5f0';
-        label.innerText = horas[i];
+            const altura = Math.min(150, valor * 1.5);
 
-        wrapper.appendChild(bar);
-        wrapper.appendChild(label);
-        container.appendChild(wrapper);
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.flexDirection = 'column';
+            wrapper.style.alignItems = 'center';
+            wrapper.style.width = '70px';
+
+            const bar = document.createElement('div');
+            bar.className = 'bar-neon';
+            bar.style.height = `${altura}px`;
+            bar.style.width = '48px';
+            bar.style.display = 'flex';
+            bar.style.alignItems = 'flex-end';
+            bar.style.justifyContent = 'center';
+            bar.style.paddingBottom = '8px';
+            bar.style.fontSize = '0.7rem';
+            bar.style.color = '#fff';
+            bar.innerText = `${valor}%`;
+
+            const label = document.createElement('div');
+            label.style.fontSize = '0.7rem';
+            label.style.marginTop = '8px';
+            label.style.color = '#cbd5f0';
+            label.innerText = hora;
+
+            wrapper.appendChild(bar);
+            wrapper.appendChild(label);
+            container.appendChild(wrapper);
+        });
+
+    } catch (error) {
+        console.error("Error cargando gráfico:", error);
     }
 }
 
@@ -132,5 +147,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Barras cada 10s (simulación visual)
     renderColorfulBars();
-    setInterval(renderColorfulBars, 10000);
+    setInterval(() => {
+        obtenerDatosThingSpeak();
+        renderColorfulBars();
+    }, 15000);
 });
