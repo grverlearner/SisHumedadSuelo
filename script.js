@@ -60,13 +60,10 @@ function actualizarDashboardReal(hum, fecha) {
     document.getElementById('badgeLive').innerHTML = badgeContent;
 
     // Hora real desde ThingSpeak
-    const ahora = new Date();
     const lectura = new Date(fecha);
 
-    const diffMin = Math.floor((ahora - lectura) / 60000);
-
     document.getElementById("lastLive").innerText =
-        diffMin === 0 ? "Ahora mismo" : `Hace ${diffMin} min`;
+        lectura.toLocaleTimeString();
 }
 
 // ==============================
